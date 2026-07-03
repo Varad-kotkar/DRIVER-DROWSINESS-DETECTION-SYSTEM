@@ -33,9 +33,7 @@ landmark tracking and the **Eye Aspect Ratio (EAR)** technique.
 ## Demo
 
 <img width="1440" height="1440" alt="compile" src="https://github.com/user-attachments/assets/d0a777c3-a8bd-4178-8856-34d896a7572d" />
-![Uploading compile.jpg…]()
-<img width="1440" height="1440" alt="compile" src="https://github.com/user-attachments/assets/befcdfb4-2542-4169-9a0e-745b05afee49" />
-![Uploading compile.jpg…]()
+
 
 
 
