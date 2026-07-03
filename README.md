@@ -1,92 +1,96 @@
-# DRIVER-DROWSINESS-DETECTION-SYSTEM
-Objectives -To build a system that monitors a driver’s alertness using a webcam. To detect closed eyes or signs of sleepiness. To give a warning sound and on-screen alert when drowsiness is detected. To provide a simple and user-friendly interface that anyone can use.
+# Driver Drowsiness Detection System
 
-# DRIVER DROWSINESS DETECTION SYSTEM
+Real-time driver drowsiness detection from a webcam feed, using facial
+landmark tracking and the **Eye Aspect Ratio (EAR)** technique.
 
-import cv2
-import winsound
-import tkinter as tk
-from tkinter import messagebox
+## How it works
 
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+1. **Face landmark detection** — [MediaPipe FaceMesh](https://developers.google.com/mediapipe)
+   locates 468 facial landmarks per frame, including precise points around
+   each eye.
+2. **Eye Aspect Ratio (EAR)** — for each eye, EAR compares the vertical
+   distance between the eyelids to the horizontal width of the eye:
 
-def start_detection():
-    # Try to open the camera
-    cap = cv2.VideoCapture(0)  # Try camera index 0
-    if not cap.isOpened():
-        print("Error: Could not open video stream.")
-        messagebox.showerror("Error", "Could not access camera. Please check if it is in use or connected properly.")
-        return
+   ```
+   EAR = (‖p2 - p6‖ + ‖p3 - p5‖) / (2 * ‖p1 - p4‖)
+   ```
 
-    drowsy_count = 0  # Counter for drowsiness
-    THRESHOLD_FRAMES = 20  # Frames before alarm triggers
+   EAR stays roughly constant while eyes are open and drops sharply when
+   they close. This is the standard method introduced by Soukupova & Cech
+   (2016) and is more reliable than plain Haar-cascade eye detection, since
+   it works continuously across head angle, glasses, and lighting changes
+   rather than doing a binary "eye found / not found" check per frame.
+3. **Time-based alert, not frame-based** — the system tracks *how long*
+   EAR has stayed below the threshold using a wall-clock timer, not a raw
+   frame count. A frame-count threshold (e.g. "20 frames") is unreliable
+   because it silently changes meaning with camera FPS — 20 frames is under
+   a second on a 30fps camera but several seconds on a slow one. Here,
+   `--closed-seconds` means the same thing regardless of hardware.
+4. **Face-missing vs. eyes-closed are tracked separately** — no face
+   detected (e.g. driver turned away) triggers a different warning than
+   eyes verifiably closed, instead of treating both as the same signal.
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+## Demo
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+*(Add a screenshot or short GIF of the alert banner here before sharing the
+repo — this matters more than any code change for making a strong first
+impression.)*
 
-        # Detect faces in the grayscale image
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+## Setup
 
-        if len(faces) == 0:
-            drowsy_count += 1  # Increment drowsy count if no faces detected
-        else:
-            # Loop through each face detected
-            for (x, y, w, h) in faces:
-                # Extract the region of interest (ROI) where the face is detected
-                roi_gray = gray[y:y + h, x:x + w]
+```bash
+git clone https://github.com/<your-username>/driver-drowsiness-detection.git
+cd driver-drowsiness-detection
+python -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-                # Detect eyes within the face region
-                eyes = eye_cascade.detectMultiScale(roi_gray)
+## Usage
 
-                if len(eyes) == 0:
-                    drowsy_count += 1  # Increment drowsy count if no eyes detected
-                else:
-                    drowsy_count = 0  # Reset drowsy count if eyes are detected
+```bash
+cd src
+python drowsiness_detector.py
+```
 
-                # Draw rectangle around the face
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+Optional flags:
 
-                # Draw rectangles around the eyes
-                for (ex, ey, ew, eh) in eyes:
-                    cv2.rectangle(frame, (x + ex, y + ey), (x + ex + ew, y + ey + eh), (0, 255, 0), 2)
+```bash
+python drowsiness_detector.py --camera 1 --ear-threshold 0.22 --closed-seconds 1.2
+```
 
-        # If drowsy count exceeds the threshold, trigger the alarm
-        if drowsy_count >= THRESHOLD_FRAMES:
-            cv2.putText(frame, "WAKE UP!", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            winsound.Beep(1000, 500)
+| Flag | Default | Meaning |
+|---|---|---|
+| `--camera` | `0` | Webcam index to use |
+| `--ear-threshold` | `0.25` | EAR value below which eyes are considered closed |
+| `--closed-seconds` | `1.5` | How many seconds eyes must stay closed before alerting |
 
-        cv2.imshow("Driver Alertness", frame)
+Press `q` to quit.
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+## Project structure
 
-    cap.release()
-    cv2.destroyAllWindows()
+```
+driver-drowsiness-detection/
+├── src/
+│   ├── drowsiness_detector.py   # main application loop, camera, alerts
+│   └── ear_utils.py             # EAR math, isolated and unit-testable
+├── requirements.txt
+└── README.md
+```
 
+## Known limitations & next steps
 
-def show_info():
-    messagebox.showinfo("Instructions", "Press 'q' to stop the detection.")
-
-
-# Create Tkinter GUI
-root = tk.Tk()
-root.title("Driver Alertness System")
-
-label = tk.Label(root, text="Driver Alertness Detection", font=("Arial", 14))
-label.pack(pady=10)
-
-start_button = tk.Button(root, text="Start Detection", command=start_detection, font=("Arial", 12))
-start_button.pack(pady=5)
-
-info_button = tk.Button(root, text="Instructions", command=show_info, font=("Arial", 12))
-info_button.pack(pady=5)
-
-exit_button = tk.Button(root, text="Exit", command=root.quit, font=("Arial", 12))
-exit_button.pack(pady=10)
-
-root.mainloop()
+- Single-face only (`max_num_faces=1`) — fine for a driver-facing camera,
+  not designed for multiple people in frame.
+- Sound alert is best-effort: uses `winsound` on Windows and a terminal
+  bell elsewhere; the on-screen red banner is the primary, guaranteed
+  alert on every platform.
+- No head-pose estimation yet — a driver nodding off with their head
+  tilted down can partially fool landmark detection. Adding head-pose
+  angle as a second signal alongside EAR would improve robustness.
+- No logging/analytics of drowsiness events over a session — could add a
+  simple CSV/SQLite log of alert timestamps for a "session report" feature.
+- Threshold values (`0.25`, `1.5s`) are reasonable defaults from published
+  EAR research, not tuned against a labeled drowsiness dataset — a good
+  future step would be calibrating thresholds against a real dataset
+  (e.g. NTHU-DDD) and reporting precision/recall.
