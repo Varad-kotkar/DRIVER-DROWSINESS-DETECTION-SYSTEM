@@ -39,7 +39,7 @@ impression.)*
 ## Setup
 
 ```bash
-git clone https://github.com/<your-username>/driver-drowsiness-detection.git
+git clone https://github.com/Varad-kotkar/DRIVER-DROWSINESS-DETECTION-SYSTEM.git
 cd driver-drowsiness-detection
 python -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
