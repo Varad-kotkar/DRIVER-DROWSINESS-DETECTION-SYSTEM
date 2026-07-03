@@ -32,9 +32,8 @@ landmark tracking and the **Eye Aspect Ratio (EAR)** technique.
 
 ## Demo
 
-*(Add a screenshot or short GIF of the alert banner here before sharing the
-repo — this matters more than any code change for making a strong first
-impression.)*
+![Uploading compile.jpg…]()
+
 
 ## Setup
 
